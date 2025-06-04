@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ethers } from "ethers";
 
-const RAINMAKER_CONTRACT_ADDRESS = "YOUR_DEPLOYED_CONTRACT_ADDRESS";
+const RAINMAKER_CONTRACT_ADDRESS = "0xD375BA042B41A61e36198eAd6666BC0330649403";
 const ABI = [
   "function disperseEther(address[] recipients, uint256[] values) external payable",
   "function disperseToken(address token, address[] recipients, uint256[] values) external"
