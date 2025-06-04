@@ -1,3 +1,4 @@
+// Rainmaker.tsx
 "use client";
 
 import { useState } from "react";
@@ -10,29 +11,33 @@ const ABI = [
 ];
 
 export default function Rainmaker() {
-  const [recipients, setRecipients] = useState("");
-  const [amounts, setAmounts] = useState("");
+  const [recipientsText, setRecipientsText] = useState("");
+  const [amountsText, setAmountsText] = useState("");
   const [tokenAddress, setTokenAddress] = useState("");
   const [status, setStatus] = useState("");
 
-  async function sendDisperse() {
+  async function handleDisperse() {
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      if (!window.ethereum) throw new Error("No wallet found");
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(RAINMAKER_CONTRACT_ADDRESS, ABI, signer);
 
-      const recipientList = recipients.split("\n").map((addr) => addr.trim());
-      const amountList = amounts.split("\n").map((amt) => ethers.parseEther(amt.trim()));
+      const recipients = recipientsText.split("\n").map(line => line.trim()).filter(line => line);
+      const amounts = amountsText.split("\n").map(line => ethers.parseEther(line.trim()));
+
+      if (recipients.length !== amounts.length) throw new Error("Address and amount count mismatch");
 
       if (tokenAddress) {
-        const tx = await contract.disperseToken(tokenAddress, recipientList, amountList);
+        const tx = await contract.disperseToken(tokenAddress, recipients, amounts);
         await tx.wait();
-        setStatus("Token dispersed successfully.");
+        setStatus("Token dispersed successfully!");
       } else {
-        const totalValue = amountList.reduce((acc, val) => acc + val, 0n);
-        const tx = await contract.disperseEther(recipientList, amountList, { value: totalValue });
+        const total = amounts.reduce((acc, cur) => acc + cur, 0n);
+        const tx = await contract.disperseEther(recipients, amounts, { value: total });
         await tx.wait();
-        setStatus("ETH dispersed successfully.");
+        setStatus("ETH dispersed successfully!");
       }
     } catch (err: any) {
       setStatus("Error: " + err.message);
@@ -40,13 +45,42 @@ export default function Rainmaker() {
   }
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Rainmaker</h1>
-      <textarea placeholder="One address per line" value={recipients} onChange={(e) => setRecipients(e.target.value)} className="mb-2 w-full h-32" />
-      <textarea placeholder="One amount per line (ETH or token units)" value={amounts} onChange={(e) => setAmounts(e.target.value)} className="mb-2 w-full h-32" />
-      <input placeholder="Token address (leave blank for ETH)" value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value)} className="mb-2 w-full" />
-      <button onClick={sendDisperse} className="w-full bg-blue-500 text-white py-2 rounded">Send</button>
-      {status && <p className="mt-4 text-sm text-center">{status}</p>}
+    <div className="min-h-screen bg-gray-100 py-10 px-4 sm:px-8 md:px-16">
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+        <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">Rainmaker</h1>
+
+        <label className="block font-medium mb-1">Recipient Addresses (one per line)</label>
+        <textarea
+          className="w-full border p-2 rounded mb-4 h-32 resize-none"
+          placeholder="0x123...\n0xabc..."
+          value={recipientsText}
+          onChange={(e) => setRecipientsText(e.target.value)}
+        />
+
+        <label className="block font-medium mb-1">Amounts (one per line, matching order)</label>
+        <textarea
+          className="w-full border p-2 rounded mb-4 h-32 resize-none"
+          placeholder="0.01\n0.5"
+          value={amountsText}
+          onChange={(e) => setAmountsText(e.target.value)}
+        />
+
+        <label className="block font-medium mb-1">Token Address (leave blank to send ETH)</label>
+        <input
+          className="w-full border p-2 rounded mb-6"
+          placeholder="0xTOKEN..."
+          value={tokenAddress}
+          onChange={(e) => setTokenAddress(e.target.value)}
+        />
+
+        <button
+          onClick={handleDisperse}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl"
+        >
+          Send</button>
+
+        {status && <p className="text-center text-sm mt-4 text-gray-700">{status}</p>}
+      </div>
     </div>
   );
 }
